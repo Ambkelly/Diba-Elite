@@ -9,19 +9,11 @@ export default function Nav() {
         <div className="bg-green-100 p-2 rounded-full">
           <Leaf className="text-green-700 h-6 w-6" />
         </div>
-        <Link to="/" className="text-xl font-bold text-green-800 hover:text-green-600">
-        Register/Login
-        </Link>
+        <span className="text-xl font-bold text-green-800">
+          Carbon Footprint
+        </span>
       </div>
       <ul className="flex space-x-6 text-sm font-medium text-gray-700">
-        <li>
-          <Link
-            to="/"
-            className="hover:text-green-600 transition-colors duration-200"
-          >
-            Register/Login
-          </Link>
-        </li>
         <li>
           <Link
             to="/home"

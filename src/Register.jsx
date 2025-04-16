@@ -1,6 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Leaf, Mail, Lock, User, Eye, EyeOff, ArrowRight, CheckCircle } from 'lucide-react';
 import CarbonTracker from './CarbonTracker';
+
+// Import Firebase authentication
+import { auth } from './firebase';
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
+  signInWithPopup,
+  updateProfile
+} from 'firebase/auth';
+
+// Initialize providers
+const googleProvider = new GoogleAuthProvider();
+const facebookProvider = new FacebookAuthProvider();
 
 export default function AuthPages() {
   const [isLogin, setIsLogin] = useState(true);
@@ -12,40 +28,113 @@ export default function AuthPages() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [redirectToCarbonTracker, setRedirectToCarbonTracker] = useState(false);
+  const [user, setUser] = useState(null);
 
-  // Add this function to handle navigation to CarbonTracker component
-  const navigateToCarbonTracker = () => {
-    setRedirectToCarbonTracker(true);
-  };
+  // Check if user is already authenticated
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) {
+        setUser(currentUser);
+        setRedirectToCarbonTracker(true);
+      }
+    });
+    
+    // Cleanup subscription
+    return () => unsubscribe();
+  }, []);
 
   // Early return to redirect to CarbonTracker component
   if (redirectToCarbonTracker) {
-    return <CarbonTracker />; // This will render your imported CarbonTracker component
+    return <CarbonTracker user={user} />; // Pass user data to home page if needed
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMessage('');
     
-    // Simulate API call
-    setTimeout(() => {
-      if (email === 'test@example.com' && password === 'password') {
-        setSuccessMessage(isLogin ? 'Login successful!' : 'Account created successfully!');
-        // In a real app, you would redirect or update auth state here
-        if (isLogin) {
-          // Navigate to CarbonTracker component after successful login
-          navigateToCarbonTracker();
-        }
-      } else if (isLogin) {
-        setErrorMessage('Invalid email or password.');
-      } else if (password.length < 8) {
-        setErrorMessage('Password must be at least 8 characters long.');
+    try {
+      if (isLogin) {
+        // Sign in existing user
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        setUser(userCredential.user);
+        setSuccessMessage('Login successful!');
+        setRedirectToCarbonTracker(true);
       } else {
+        // Create new user
+        if (password.length < 8) {
+          throw new Error('Password must be at least 8 characters long.');
+        }
+        
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // Update user profile with name
+        if (name) {
+          await updateProfile(userCredential.user, {
+            displayName: name
+          });
+        }
+        
+        setUser(userCredential.user);
         setSuccessMessage('Account created successfully!');
+        setRedirectToCarbonTracker(true);
       }
+    } catch (error) {
+      console.error("Authentication error:", error);
+      
+      // Handle specific Firebase auth errors with user-friendly messages
+      if (error.code === 'auth/email-already-in-use') {
+        setErrorMessage('This email is already registered. Please login instead.');
+      } else if (error.code === 'auth/invalid-email') {
+        setErrorMessage('Please enter a valid email address.');
+      } else if (error.code === 'auth/weak-password') {
+        setErrorMessage('Password should be at least 6 characters.');
+      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+        setErrorMessage('Invalid email or password.');
+      } else if (error.message) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage('An error occurred. Please try again.');
+      }
+    } finally {
       setIsSubmitting(false);
-    }, 1500);
+    }
+  };
+  
+  // Handle Google sign-in
+  const handleGoogleSignIn = async () => {
+    setIsSubmitting(true);
+    setErrorMessage('');
+    
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      setUser(result.user);
+      setSuccessMessage('Google sign-in successful!');
+      setRedirectToCarbonTracker(true);
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      setErrorMessage('Google sign-in failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
+  // Handle Facebook sign-in
+  const handleFacebookSignIn = async () => {
+    setIsSubmitting(true);
+    setErrorMessage('');
+    
+    try {
+      const result = await signInWithPopup(auth, facebookProvider);
+      setUser(result.user);
+      setSuccessMessage('Facebook sign-in successful!');
+      setRedirectToCarbonTracker(true);
+    } catch (error) {
+      console.error("Facebook sign-in error:", error);
+      setErrorMessage('Facebook sign-in failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
   
   const toggleAuthMode = () => {
@@ -55,7 +144,8 @@ export default function AuthPages() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-green-50 to-blue-50 flex items-center justify-center px-4 py-12">
+   <>
+       <div className="min-h-screen bg-gradient-to-b from-green-50 to-blue-50 flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full space-y-8 bg-white rounded-xl shadow-lg p-8 relative overflow-hidden">
         {/* Decorative leaf patterns */}
         <div className="absolute -top-10 -left-10 text-green-100">
@@ -67,9 +157,8 @@ export default function AuthPages() {
         
         {/* Content container with higher z-index */}
         <div className="relative z-10">
-          {/* Logo and title */}
           <div className="text-center">
-            <div className="mx-auto h-14 w-14 bg-green-100 text-white rounded-full flex items-center justify-center">
+            <div className="mx-auto h-14 w-14 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
               <Leaf size={32} />
             </div>
             <h2 className="mt-4 text-3xl font-bold text-green-800">Ozone Guard</h2>
@@ -251,6 +340,8 @@ export default function AuthPages() {
             <div className="mt-6 grid grid-cols-3 gap-3">
               <button
                 type="button"
+                onClick={handleGoogleSignIn}
+                disabled={isSubmitting}
                 className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
               >
                 <span className="sr-only">Sign in with Google</span>
@@ -264,6 +355,8 @@ export default function AuthPages() {
               
               <button
                 type="button"
+                onClick={handleFacebookSignIn}
+                disabled={isSubmitting}
                 className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
               >
                 <span className="sr-only">Sign in with Facebook</span>
@@ -278,7 +371,8 @@ export default function AuthPages() {
               >
                 <span className="sr-only">Sign in with Apple</span>
                 <svg className="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
-                  <path fillRule="evenodd" d="M12.146 4.146a.5.5 0 01.708 0l3 3a.5.5 0 01-.708.708L13 5.707V15a1 1 0 11-2 0V5.707L8.854 7.854a.5.5 0 01-.708-.708l3-3zM8 19a1 1 0 100-2H5a1 1 0 01-1-1V5a1 1 0 011-1h3a1 1 0 100-2H5a3 3 0 00-3 3v11a3 3 0 003 3h3zm8 0a1 1 0 100-2h-3a1 1 0 100 2h3z" clipRule="evenodd" />
+                  <path d="M17.543 11.029c-.015-1.941.981-3.432 2.982-4.504-1.132-1.647-2.847-2.471-5.099-2.499-2.122-.025-4.452 1.27-5.28 1.27-1.011 0-2.857-1.153-4.52-1.153C2.386 4.108 0 6.001 0 9.829c0 2.507.874 5.088 1.91 6.856 1.034 1.661 2.109 2.945 3.597 2.945 1.391 0 2.251-.97 3.93-.97 1.588 0 2.372.97 3.928.97 1.589 0 2.746-1.426 3.731-3.014.629-.906 1.064-1.925 1.368-3.025-3.283-1.244-3.864-5.96-1.921-8.562z" />
+                  <path d="M12.583 3.003c-1.115-1.399-2.863-1.67-3.525-1.686-.1 1.302.386 2.621 1.215 3.533.811.92 2.215 1.658 3.52 1.56.083-1.298-.431-2.589-1.21-3.407z" />
                 </svg>
               </button>
             </div>
@@ -294,5 +388,6 @@ export default function AuthPages() {
         </div>
       </div>
     </div>
+   </>
   );
 }

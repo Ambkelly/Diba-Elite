@@ -1,11 +1,52 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Bar, Pie } from 'react-chartjs-2';
 import { Chart, registerables } from 'chart.js';
 import { saveAs } from 'file-saver';
+import { Leaf } from 'lucide-react';
 
+// Register Chart.js components
 Chart.register(...registerables);
 
+/**
+ * Main CarbonTracker component that calculates and displays carbon footprint
+ */
 const CarbonTracker = () => {
+  // Navigation component
+  const Nav = () => {
+    return (
+      <nav className="bg-white shadow-md p-4 flex justify-between items-center">
+        <div className="flex items-center space-x-2">
+          <div className="bg-green-100 p-2 rounded-full">
+            <Leaf className="text-green-700 h-6 w-6" />
+          </div>
+          <span className="text-xl font-bold text-green-800">
+            Carbon Footprint
+          </span>
+        </div>
+        <ul className="flex space-x-6 text-sm font-medium text-gray-700">
+          <li>
+            <Link
+              to="/home"
+              className="hover:text-green-600 transition-colors duration-200"
+            >
+              Carbon Tracker
+            </Link>
+          </li>
+          <li>
+            <Link
+              to="/CarbonSustainabilityApp"
+              className="hover:text-green-600 transition-colors duration-200"
+            >
+              Seasonal Reminders
+            </Link>
+          </li>
+        </ul>
+      </nav>
+    );
+  };
+
+  // State for form data
   const [formData, setFormData] = useState({
     transportationType: 'car',
     distance: '',
@@ -18,6 +59,7 @@ const CarbonTracker = () => {
     shoppingHabits: 'moderate'
   });
   
+  // State for calculation results
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -25,6 +67,7 @@ const CarbonTracker = () => {
   const [showHistory, setShowHistory] = useState(false);
   const [comparisonData, setComparisonData] = useState(null);
 
+  // Load saved data on component mount
   useEffect(() => {
     // Load saved calculations from localStorage
     const saved = JSON.parse(localStorage.getItem('carbonCalculations')) || [];
@@ -37,6 +80,10 @@ const CarbonTracker = () => {
     setComparisonData({ avgUS, avgEU, avgGlobal });
   }, []);
 
+  /**
+   * Handle form input changes
+   * @param {Object} e - Event object
+   */
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({
@@ -45,6 +92,10 @@ const CarbonTracker = () => {
     });
   };
 
+  /**
+   * Save calculation to localStorage
+   * @param {Object} calculation - Calculation result to save
+   */
   const saveCalculation = (calculation) => {
     const newSaved = [...savedCalculations, {
       ...calculation,
@@ -54,6 +105,9 @@ const CarbonTracker = () => {
     localStorage.setItem('carbonCalculations', JSON.stringify(newSaved));
   };
 
+  /**
+   * Calculate carbon emissions based on form data
+   */
   const calculateEmissions = async () => {
     setLoading(true);
     setError(null);
@@ -129,78 +183,16 @@ const CarbonTracker = () => {
       const totalEmissions = transportEmissions + electricityEmissions + 
                            foodEmissions + wasteEmissions + shoppingEmissions;
       
-      // Generate recommendations
-      const recommendations = [];
+      // Generate recommendations based on emissions
+      const recommendations = generateRecommendations(
+        transportEmissions,
+        electricityEmissions,
+        foodEmissions,
+        wasteEmissions,
+        shoppingEmissions
+      );
       
-      if (transportEmissions > 5) {
-        recommendations.push({
-          text: "Consider carpooling, using public transport, or switching to an electric vehicle.",
-          category: "Transportation",
-          impact: "High",
-          resources: [
-            { title: "Public Transport Options", url: "#" },
-            { title: "EV Buying Guide", url: "#" }
-          ]
-        });
-      }
-      
-      if (electricityEmissions > 3) {
-        recommendations.push({
-          text: "Your electricity usage is high. Try energy-efficient appliances and turning off electronics.",
-          category: "Energy",
-          impact: "Medium",
-          resources: [
-            { title: "Energy Saving Tips", url: "#" },
-            { title: "Solar Panel Information", url: "#" }
-          ]
-        });
-      }
-      
-      if (foodEmissions > 3) {
-        recommendations.push({
-          text: "Consider reducing meat consumption and incorporating more plant-based meals.",
-          category: "Food",
-          impact: "High",
-          resources: [
-            { title: "Plant-Based Recipes", url: "#" },
-            { title: "Sustainable Farming", url: "#" }
-          ]
-        });
-      }
-      
-      if (wasteEmissions > 0.6) {
-        recommendations.push({
-          text: "Increase recycling and consider composting to reduce landfill waste.",
-          category: "Waste",
-          impact: "Medium",
-          resources: [
-            { title: "Composting Guide", url: "#" },
-            { title: "Recycling Tips", url: "#" }
-          ]
-        });
-      }
-      
-      if (shoppingEmissions > 2) {
-        recommendations.push({
-          text: "Consider buying second-hand or from sustainable brands to reduce your shopping footprint.",
-          category: "Shopping",
-          impact: "Medium",
-          resources: [
-            { title: "Sustainable Brands", url: "#" },
-            { title: "Thrift Shopping Guide", url: "#" }
-          ]
-        });
-      }
-      
-      if (recommendations.length === 0) {
-        recommendations.push({
-          text: "You're doing great! Keep up the eco-friendly lifestyle.",
-          category: "General",
-          impact: "Low",
-          resources: []
-        });
-      }
-      
+      // Prepare result object
       const result = {
         transportEmissions: parseFloat(transportEmissions.toFixed(2)),
         electricityEmissions: parseFloat(electricityEmissions.toFixed(2)),
@@ -223,17 +215,103 @@ const CarbonTracker = () => {
     }
   };
 
+  /**
+   * Generate recommendations based on emission values
+   */
+  const generateRecommendations = (transport, electricity, food, waste, shopping) => {
+    const recommendations = [];
+    
+    if (transport > 5) {
+      recommendations.push({
+        text: "Consider carpooling, using public transport, or switching to an electric vehicle.",
+        category: "Transportation",
+        impact: "High",
+        resources: [
+          { title: "Public Transport Options", url: "#" },
+          { title: "EV Buying Guide", url: "#" }
+        ]
+      });
+    }
+    
+    if (electricity > 3) {
+      recommendations.push({
+        text: "Your electricity usage is high. Try energy-efficient appliances and turning off electronics.",
+        category: "Energy",
+        impact: "Medium",
+        resources: [
+          { title: "Energy Saving Tips", url: "#" },
+          { title: "Solar Panel Information", url: "#" }
+        ]
+      });
+    }
+    
+    if (food > 3) {
+      recommendations.push({
+        text: "Consider reducing meat consumption and incorporating more plant-based meals.",
+        category: "Food",
+        impact: "High",
+        resources: [
+          { title: "Plant-Based Recipes", url: "#" },
+          { title: "Sustainable Farming", url: "#" }
+        ]
+      });
+    }
+    
+    if (waste > 0.6) {
+      recommendations.push({
+        text: "Increase recycling and consider composting to reduce landfill waste.",
+        category: "Waste",
+        impact: "Medium",
+        resources: [
+          { title: "Composting Guide", url: "#" },
+          { title: "Recycling Tips", url: "#" }
+        ]
+      });
+    }
+    
+    if (shopping > 2) {
+      recommendations.push({
+        text: "Consider buying second-hand or from sustainable brands to reduce your shopping footprint.",
+        category: "Shopping",
+        impact: "Medium",
+        resources: [
+          { title: "Sustainable Brands", url: "#" },
+          { title: "Thrift Shopping Guide", url: "#" }
+        ]
+      });
+    }
+    
+    if (recommendations.length === 0) {
+      recommendations.push({
+        text: "You're doing great! Keep up the eco-friendly lifestyle.",
+        category: "General",
+        impact: "Low",
+        resources: []
+      });
+    }
+    
+    return recommendations;
+  };
+
+  /**
+   * Handle form submission
+   * @param {Object} e - Event object
+   */
   const handleSubmit = (e) => {
     e.preventDefault();
     calculateEmissions();
   };
 
+  /**
+   * Export results to a text file
+   */
   const exportToPDF = () => {
     const blob = new Blob([`Carbon Footprint Report\n\nTotal Emissions: ${results.totalEmissions} kg CO2\n\nBreakdown:\nTransport: ${results.transportEmissions}\nElectricity: ${results.electricityEmissions}\nFood: ${results.foodEmissions}\nWaste: ${results.wasteEmissions}\nShopping: ${results.shoppingEmissions}`], 
       { type: 'text/plain;charset=utf-8' });
     saveAs(blob, 'carbon-footprint-report.txt');
   };
 
+  // Data for chart visualization
   const emissionsData = {
     labels: ['Transport', 'Electricity', 'Food', 'Waste', 'Shopping'],
     datasets: [
@@ -267,6 +345,9 @@ const CarbonTracker = () => {
 
   return (
     <div className="min-h-screen bg-green-50">
+      {/* Navigation */}
+      <Nav />
+      
       <div className="container mx-auto px-4 py-8">
         <div className="bg-green-100 rounded-lg shadow-md p-6 mb-8">
           <h1 className="text-3xl font-bold text-green-800 mb-2">Carbon Footprint Calculator</h1>

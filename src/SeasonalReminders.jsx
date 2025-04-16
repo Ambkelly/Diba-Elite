@@ -1,5 +1,39 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Calendar, Map, Info, CheckCircle, Leaf, Droplet, Zap, Trash2, Star, Save } from 'lucide-react';
+
+function Nav() {
+  return (
+    <nav className="bg-white shadow-md p-4 flex justify-between items-center">
+      <div className="flex items-center space-x-2">
+        <div className="bg-green-100 p-2 rounded-full">
+          <Leaf className="text-green-700 h-6 w-6" />
+        </div>
+        <span className="text-xl font-bold text-green-800">
+          Carbon Footprint
+        </span>
+      </div>
+      <ul className="flex space-x-6 text-sm font-medium text-gray-700">
+        <li>
+          <Link
+            to="/home"
+            className="hover:text-green-600 transition-colors duration-200"
+          >
+            Carbon Tracker
+          </Link>
+        </li>
+        <li>
+          <Link
+            to="/CarbonSustainabilityApp"
+            className="hover:text-green-600 transition-colors duration-200"
+          >
+            Seasonal Reminders
+          </Link>
+        </li>
+      </ul>
+    </nav>
+  );
+}
 
 export default function CarbonSustainabilityApp() {
   // State management
@@ -215,6 +249,9 @@ export default function CarbonSustainabilityApp() {
 
   return (
     <div className="bg-gradient-to-b from-green-50 to-blue-50 min-h-screen">
+      {/* Navigation */}
+      <Nav />
+      
       {/* Toast notification */}
       {showToast && (
         <div className="fixed top-4 right-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded shadow-md z-50">
@@ -487,18 +524,19 @@ export default function CarbonSustainabilityApp() {
               <p className="text-gray-600">Expand your knowledge with these educational resources on carbon footprints and sustainability</p>
             </header>
             
-            {/* Featured Video Player */}
+            {/* Featured Video Player with YouTube iframe */}
             {activeVideo !== null && (
               <div className="mb-6 rounded-lg overflow-hidden shadow-lg bg-white p-4">
                 <div className="relative pt-0 pb-0 h-0 overflow-hidden rounded-lg" style={{paddingBottom: "56.25%"}}>
-                  {/* This is a placeholder for what would be a video iframe in a real implementation */}
-                  <div className="absolute top-0 left-0 w-full h-full bg-gray-900 flex items-center justify-center">
-                    <div className="text-white text-center">
-                      <div className="text-6xl mb-2">▶</div>
-                      <p className="text-xl">Video Player: {videos[activeVideo].title}</p>
-                      <p className="text-sm opacity-70 mt-2">Video ID: {videos[activeVideo].id}</p>
-                    </div>
-                  </div>
+                  {/* YouTube iframe */}
+                  <iframe 
+                    className="absolute top-0 left-0 w-full h-full"
+                    src={`https://www.youtube.com/embed/${videos[activeVideo].id}`}
+                    title={videos[activeVideo].title}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
                 </div>
                 <div className="pt-4">
                   <h3 className="font-bold text-green-700 text-xl">{videos[activeVideo].title}</h3>
@@ -507,7 +545,7 @@ export default function CarbonSustainabilityApp() {
               </div>
             )}
             
-            {/* Video Selection Grid */}
+            {/* Video Selection Grid with YouTube Thumbnails */}
             <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 ${activeVideo === null ? 'mt-4' : ''}`}>
               {videos.map((video, index) => (
                 <div 
@@ -518,9 +556,13 @@ export default function CarbonSustainabilityApp() {
                   onClick={() => handleVideoSelect(index)}
                 >
                   <div className="relative pb-0 h-0 overflow-hidden" style={{paddingBottom: "56.25%"}}>
-                    <div 
-                      className="absolute top-0 left-0 w-full h-full bg-gray-300 flex items-center justify-center"
-                    >
+                    {/* YouTube thumbnail */}
+                    <img 
+                      src={`https://img.youtube.com/vi/${video.id}/mqdefault.jpg`} 
+                      alt={video.title}
+                      className="absolute top-0 left-0 w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20 hover:bg-opacity-30 transition-opacity">
                       <div className="bg-black bg-opacity-50 rounded-full p-3">
                         <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M8 5v14l11-7z" />
