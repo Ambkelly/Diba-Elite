@@ -1,4 +1,3 @@
-// ChatWidget.jsx
 import { useState, useEffect, useRef } from 'react';
 import { MessageSquare, X, Send, ChevronDown } from 'lucide-react';
 
@@ -17,7 +16,15 @@ const ChatWidget = () => {
   const inputRef = useRef(null);
   
   // OpenRouter API key
-  const OPENROUTER_API_KEY = "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";
+  const OPENROUTER_API_KEY = "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";
+
+  // List of models to try in order of preference
+  const MODELS_TO_TRY = [
+    'anthropic/claude-3-haiku',
+    'openai/gpt-3.5-turbo',
+    'google/gemini-pro',
+    'anthropic/claude-2.0'
+  ];
 
   // Auto-scroll to bottom of messages when new ones arrive
   useEffect(() => {
@@ -43,38 +50,90 @@ const ChatWidget = () => {
     setInputValue(e.target.value);
   };
 
-  // Function to call OpenRouter API
+  // Function to call OpenRouter API with fallback models
   const callOpenRouterAPI = async (messageHistory) => {
-    try {
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-          'HTTP-Referer': window.location.origin, // Required by OpenRouter
-          'X-Title': 'Carbon Footprint Assistant' // Optional - name of your app
-        },
-        body: JSON.stringify({
-          model: 'anthropic/claude-3-haiku', // You can change this to any model supported by OpenRouter
-          messages: messageHistory.map(msg => ({
-            role: msg.sender === 'user' ? 'user' : 'assistant',
-            content: msg.text
-          })),
-          max_tokens: 1000,
-          temperature: 0.7,
-          system: "You are a helpful AI assistant specialized in environmental sustainability and carbon footprint reduction. Provide concise, accurate information about climate change, sustainability practices, and ways to reduce carbon emissions. Your responses should be informative, practical, and optimistic about climate action."
-        })
-      });
+    const formattedMessages = messageHistory.map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'assistant',
+      content: msg.text
+    }));
+    
+    console.log('Formatted messages for API:', formattedMessages);
+    
+    // Try each model in sequence until one works
+    for (const model of MODELS_TO_TRY) {
+      try {
+        console.log(`Attempting to use model: ${model}`);
+        
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+            'HTTP-Referer': window.location.origin, // Required by OpenRouter
+            'X-Title': 'Carbon Footprint Assistant' // Optional - name of your app
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: formattedMessages,
+            max_tokens: 1000,
+            temperature: 0.7,
+            system: "You are a helpful AI assistant specialized in environmental sustainability and carbon footprint reduction. Provide concise, accurate information about climate change, sustainability practices, and ways to reduce carbon emissions. Your responses should be informative, practical, and optimistic about climate action."
+          })
+        });
 
-      if (!response.ok) {
-        throw new Error(`OpenRouter API error: ${response.status}`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+          console.error(`OpenRouter API error with model ${model}:`, data);
+          // Continue to next model if this one fails
+          continue;
+        }
+
+        console.log(`Successful response from model ${model}:`, data);
+        
+        // Check if the expected data structure is present
+        if (!data.choices || !data.choices[0] || !data.choices[0].message || !data.choices[0].message.content) {
+          console.error('Unexpected API response format:', data);
+          continue; // Try next model
+        }
+
+        console.log(`Successfully got response from model: ${model}`);
+        return data.choices[0].message.content;
+      } catch (error) {
+        console.error(`Error with model ${model}:`, error);
+        // Continue to next model on error
       }
+    }
+    
+    // If we get here, all models failed
+    console.error('All models failed to respond properly');
+    return "Sorry, I'm having trouble connecting to my knowledge base right now. Please try again later.";
+  };
 
-      const data = await response.json();
-      return data.choices[0].message.content;
-    } catch (error) {
-      console.error('Error calling OpenRouter API:', error);
-      return "Sorry, I'm having trouble connecting to my knowledge base right now. Please try again later.";
+  // Fallback responses for when API is down
+  const FALLBACK_RESPONSES = [
+    "To reduce your carbon footprint, consider using public transportation, biking, or walking instead of driving alone.",
+    "One simple way to reduce emissions is to eat more plant-based meals and less meat, especially beef.",
+    "Reducing food waste can significantly lower your carbon footprint. Try meal planning and composting leftovers.",
+    "Energy efficiency at home matters - switching to LED bulbs, improving insulation, and using smart thermostats can all help.",
+    "Consider the carbon footprint of your purchases by buying less, choosing used items, and selecting products with minimal packaging."
+  ];
+
+  const getFallbackResponse = (userMessage) => {
+    // Simple keyword matching to provide somewhat relevant responses
+    const message = userMessage.toLowerCase();
+    
+    if (message.includes('transport') || message.includes('car') || message.includes('travel')) {
+      return FALLBACK_RESPONSES[0];
+    } else if (message.includes('food') || message.includes('eat') || message.includes('diet')) {
+      return FALLBACK_RESPONSES[1];
+    } else if (message.includes('waste') || message.includes('trash') || message.includes('garbage')) {
+      return FALLBACK_RESPONSES[2];
+    } else if (message.includes('energy') || message.includes('electricity') || message.includes('power')) {
+      return FALLBACK_RESPONSES[3];
+    } else {
+      // Default or random response if no keywords match
+      return FALLBACK_RESPONSES[4];
     }
   };
 
@@ -95,24 +154,56 @@ const ChatWidget = () => {
     // Show typing indicator
     setIsTyping(true);
     
-    // Create message history for context
-    const messageHistory = [
-      ...messages,
-      userMessage
-    ];
-    
-    // Call OpenRouter API
-    const botResponse = await callOpenRouterAPI(messageHistory);
-    
-    // Hide typing indicator and add bot response
-    setIsTyping(false);
-    const botMessage = {
-      id: messages.length + 2,
-      text: botResponse,
-      sender: 'bot'
-    };
-    
-    setMessages(prev => [...prev, botMessage]);
+    try {
+      // Create message history for context
+      const messageHistory = [
+        ...messages,
+        userMessage
+      ];
+      
+      // Try API call with retries on different models
+      let botResponse;
+      
+      try {
+        // Set a timeout of 10 seconds for the API call
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('API request timed out')), 10000)
+        );
+        
+        // Race between API call and timeout
+        botResponse = await Promise.race([
+          callOpenRouterAPI(messageHistory),
+          timeoutPromise
+        ]);
+      } catch (apiError) {
+        console.error('API error or timeout:', apiError);
+        // Use fallback if API completely fails or times out
+        botResponse = getFallbackResponse(userMessage.text) + 
+                     "\n\n(Note: I'm currently using offline mode due to connectivity issues.)";
+      }
+      
+      // Add bot response
+      const botMessage = {
+        id: messages.length + 2,
+        text: botResponse,
+        sender: 'bot'
+      };
+      
+      setMessages(prev => [...prev, botMessage]);
+    } catch (error) {
+      console.error('Error in chat flow:', error);
+      // Add an error message with a helpful fallback response
+      const errorMessage = {
+        id: messages.length + 2,
+        text: getFallbackResponse(userMessage.text) + 
+              "\n\n(I'm currently experiencing connection issues but I'm still here to help with basic information.)",
+        sender: 'bot'
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      // Hide typing indicator
+      setIsTyping(false);
+    }
   };
 
   // Click outside to close

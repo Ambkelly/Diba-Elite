@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Leaf, Mail, Lock, User, Eye, EyeOff, ArrowRight, CheckCircle } from 'lucide-react';
-import CarbonTracker from './CarbonTracker';
 
 // Import Firebase authentication
 import { auth } from './firebase';
@@ -18,8 +18,8 @@ import {
 const googleProvider = new GoogleAuthProvider();
 const facebookProvider = new FacebookAuthProvider();
 
-export default function AuthPages() {
-  const [isLogin, setIsLogin] = useState(true);
+export default function AuthPages({ mode = 'login' }) {
+  const [isLogin, setIsLogin] = useState(mode === 'login');
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -27,26 +27,20 @@ export default function AuthPages() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-  const [redirectToCarbonTracker, setRedirectToCarbonTracker] = useState(false);
   const [user, setUser] = useState(null);
+  const navigate = useNavigate();
 
   // Check if user is already authenticated
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        setRedirectToCarbonTracker(true);
+        // Removed immediate navigation to let the UI update first
       }
     });
     
-    // Cleanup subscription
     return () => unsubscribe();
-  }, []);
-
-  // Early return to redirect to CarbonTracker component
-  if (redirectToCarbonTracker) {
-    return <CarbonTracker user={user} />; // Pass user data to home page if needed
-  }
+  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,12 +52,12 @@ export default function AuthPages() {
         // Sign in existing user
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         setUser(userCredential.user);
-        setSuccessMessage('Login successful!');
-        setRedirectToCarbonTracker(true);
+        setSuccessMessage('Login successful! Redirecting...');
+        setTimeout(() => navigate('/home'), 1500); // Give user time to see success message
       } else {
         // Create new user
-        if (password.length < 8) {
-          throw new Error('Password must be at least 8 characters long.');
+        if (password.length < 6) { // Changed to match Firebase's default
+          throw new Error('Password must be at least 6 characters long.');
         }
         
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -76,25 +70,35 @@ export default function AuthPages() {
         }
         
         setUser(userCredential.user);
-        setSuccessMessage('Account created successfully!');
-        setRedirectToCarbonTracker(true);
+        setSuccessMessage('Account created successfully! Redirecting...');
+        setTimeout(() => navigate('/home'), 1500); // Give user time to see success message
       }
     } catch (error) {
       console.error("Authentication error:", error);
       
-      // Handle specific Firebase auth errors with user-friendly messages
-      if (error.code === 'auth/email-already-in-use') {
-        setErrorMessage('This email is already registered. Please login instead.');
-      } else if (error.code === 'auth/invalid-email') {
-        setErrorMessage('Please enter a valid email address.');
-      } else if (error.code === 'auth/weak-password') {
-        setErrorMessage('Password should be at least 6 characters.');
-      } else if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-        setErrorMessage('Invalid email or password.');
-      } else if (error.message) {
-        setErrorMessage(error.message);
-      } else {
-        setErrorMessage('An error occurred. Please try again.');
+      // Enhanced error handling
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          setErrorMessage('This email is already registered. Please login instead.');
+          break;
+        case 'auth/invalid-email':
+          setErrorMessage('Please enter a valid email address.');
+          break;
+        case 'auth/weak-password':
+          setErrorMessage('Password should be at least 6 characters.');
+          break;
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+          setErrorMessage('Invalid email or password.');
+          break;
+        case 'auth/too-many-requests':
+          setErrorMessage('Too many attempts. Please try again later.');
+          break;
+        case 'auth/operation-not-allowed':
+          setErrorMessage('This operation is not allowed. Contact support.');
+          break;
+        default:
+          setErrorMessage(error.message || 'An error occurred. Please try again.');
       }
     } finally {
       setIsSubmitting(false);
@@ -109,11 +113,11 @@ export default function AuthPages() {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       setUser(result.user);
-      setSuccessMessage('Google sign-in successful!');
-      setRedirectToCarbonTracker(true);
+      setSuccessMessage('Google sign-in successful! Redirecting...');
+      setTimeout(() => navigate('/home'), 1500);
     } catch (error) {
       console.error("Google sign-in error:", error);
-      setErrorMessage('Google sign-in failed. Please try again.');
+      setErrorMessage(error.message || 'Google sign-in failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -127,11 +131,11 @@ export default function AuthPages() {
     try {
       const result = await signInWithPopup(auth, facebookProvider);
       setUser(result.user);
-      setSuccessMessage('Facebook sign-in successful!');
-      setRedirectToCarbonTracker(true);
+      setSuccessMessage('Facebook sign-in successful! Redirecting...');
+      setTimeout(() => navigate('/home'), 1500);
     } catch (error) {
       console.error("Facebook sign-in error:", error);
-      setErrorMessage('Facebook sign-in failed. Please try again.');
+      setErrorMessage(error.message || 'Facebook sign-in failed. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -141,11 +145,11 @@ export default function AuthPages() {
     setIsLogin(!isLogin);
     setErrorMessage('');
     setSuccessMessage('');
+    navigate(isLogin ? '/register' : '/login');
   };
 
   return (
-   <>
-       <div className="min-h-screen bg-gradient-to-b from-green-50 to-blue-50 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gradient-to-b from-green-50 to-blue-50 flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full space-y-8 bg-white rounded-xl shadow-lg p-8 relative overflow-hidden">
         {/* Decorative leaf patterns */}
         <div className="absolute -top-10 -left-10 text-green-100">
@@ -264,7 +268,7 @@ export default function AuthPages() {
                 </div>
                 {!isLogin && (
                   <p className="mt-1 text-xs text-gray-500">
-                    Password must be at least 8 characters long
+                    Password must be at least 6 characters long
                   </p>
                 )}
               </div>
@@ -367,7 +371,8 @@ export default function AuthPages() {
               
               <button
                 type="button"
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
+                disabled
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 opacity-50 cursor-not-allowed"
               >
                 <span className="sr-only">Sign in with Apple</span>
                 <svg className="w-5 h-5" aria-hidden="true" fill="currentColor" viewBox="0 0 24 24">
@@ -388,6 +393,5 @@ export default function AuthPages() {
         </div>
       </div>
     </div>
-   </>
   );
 }
