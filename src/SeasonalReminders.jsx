@@ -10,7 +10,7 @@ function Nav() {
           <Leaf className="text-green-700 h-6 w-6" />
         </div>
         <span className="text-xl font-bold text-green-800">
-          Carbon Footprint
+         Ozone Guard
         </span>
       </div>
       <ul className="flex space-x-6 text-sm font-medium text-gray-700">
@@ -340,7 +340,7 @@ export default function CarbonSustainabilityApp() {
                       <h3 className="font-medium text-blue-800">Seasonal Food Guide</h3>
                       <p className="text-sm text-blue-600 mt-1">Find what produce is in season in your area.</p>
                       <button className="mt-2 text-sm text-blue-600 hover:text-blue-800 flex items-center">
-                        View Guide <span className="ml-1">→</span>
+                        View Guide <span className="ml-1">→</span>  <span className='text-red-500 ml-2.5'>Coming soon..</span>
                       </button>
                     </div>
 
@@ -348,7 +348,7 @@ export default function CarbonSustainabilityApp() {
                       <h3 className="font-medium text-green-800">Energy Saving Calendar</h3>
                       <p className="text-sm text-green-600 mt-1">Monthly checklist for home energy efficiency.</p>
                       <button className="mt-2 text-sm text-green-600 hover:text-green-800 flex items-center">
-                        Download PDF <span className="ml-1">→</span>
+                        Download PDF <span className="ml-1">→</span> <span className='text-red-500 ml-2.5'>Coming soon..</span>
                       </button>
                     </div>
 
@@ -356,7 +356,7 @@ export default function CarbonSustainabilityApp() {
                       <h3 className="font-medium text-yellow-800">Local Events</h3>
                       <p className="text-sm text-yellow-600 mt-1">Find sustainability events in your community.</p>
                       <button className="mt-2 text-sm text-yellow-600 hover:text-yellow-800 flex items-center">
-                        Browse Events <span className="ml-1">→</span>
+                        Browse Events <span className="ml-1">→</span> <span className='text-red-500 ml-2.5'>Coming soon..</span>
                       </button>
                     </div>
                   </div>
@@ -607,7 +607,7 @@ export default function CarbonSustainabilityApp() {
       )}
 
       <footer className="text-center text-sm text-gray-500 py-6">
-        <p>© 2025 Diba Elite - Your Partner in Sustainable Living</p>
+        <p>© 2025 Diba Elite Team - Your Partner in Sustainable Living</p>
       </footer>
     </div>
   );

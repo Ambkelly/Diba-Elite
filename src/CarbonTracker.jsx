@@ -21,7 +21,7 @@ const CarbonTracker = () => {
             <Leaf className="text-green-700 h-6 w-6" />
           </div>
           <span className="text-xl font-bold text-green-800">
-            Carbon Footprint
+            Ozone Guard
           </span>
         </div>
         <ul className="flex space-x-6 text-sm font-medium text-gray-700">
@@ -777,6 +777,9 @@ const CarbonTracker = () => {
           </div>
         </div>
       </div>
+      <footer className="text-center text-sm text-gray-500 py-6">
+        <p>© 2025 Diba Elite Team- Your Partner in Sustainable Living</p>
+      </footer>
     </div>
   );
 };
